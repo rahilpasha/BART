@@ -3,48 +3,39 @@
 #include <HTTPClient.h>
 #include <Arduino_JSON.h>
 #include <ctime>
+#include "TransitData.h"
 #include "credentials.h"
 #include "transitAPI.h"
-
-TFT_eSPI tft = TFT_eSPI();
-
-struct transitData {
-  String route;
-  String minutes;
-  String delay;
-};
+#include "display.h"
 
 void connectWiFi(void);
-transitData updateBARTData(String station);
-transitData updateBusData(String station);
+void setupTime(void);
+TransitData updateBARTData(String station);
+TransitData updateBusData(String station);
 String departureToMinutes(String departure);
-void setupTime();
 
 void setup() {
   Serial.begin(115200);
   connectWiFi();
   setupTime();
 
-  tft.init();
-  tft.setRotation(1);
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_WHITE);
-
-
+  displaySetup();
 }
 
 void loop() {
   Serial.println(WiFi.status());
 
-  transitData bartData = updateBARTData("dbrk");
-  transitData busData = updateBusData("59555");
+  TransitData bartData = updateBARTData("dbrk");
+  TransitData busData = updateBusData("59555");
   
+  displayBARTData(bartData);
+  displayBusData(busData);
 
   delay(10000);
 }
 
 void connectWiFi(void) {
-  WiFi.begin(ssid, password);
+  WiFi.begin(ssid, WPA2_AUTH_PEAP, username, username, password);
   Serial.println("Connecting");
   while(WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -53,7 +44,19 @@ void connectWiFi(void) {
   Serial.println("Connected");
 }
 
-transitData updateBARTData(String station) {
+void setupTime() {
+  // Set time using NTP (Pacific Time Zone with DST)
+  configTime(-7 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+
+  // Wait for time to sync
+  struct tm timeInfo;
+  while (!getLocalTime(&timeInfo)) {
+      Serial.println("Waiting for time...");
+      delay(1000);
+  }
+}
+
+TransitData updateBARTData(String station) {
   String BART_ulr = "https://api.bart.gov/api/etd.aspx?cmd=etd&orig=" + station + "&key=" + BART_API_KEY + "&json=y";
   String BART_response = callAPI(BART_ulr);
   if (BART_response != "API Request Error") {
@@ -66,18 +69,18 @@ transitData updateBARTData(String station) {
       Serial.println("Destination: " + destination + ", Minutes: " + minutes + ", Delay: " + delay);
 
       if (destination == "BERY") {
-        transitData data = {destinations[i]["estimate"][0]["color"], minutes, delay};
+        TransitData data = {destinations[i]["estimate"][0]["color"], minutes, delay};
         return data;
       }
 
     }
   }
 
-  transitData emptyData = {"", "", ""};
+  TransitData emptyData = {"", "", ""};
   return emptyData;
 }
 
-transitData updateBusData(String station) {
+TransitData updateBusData(String station) {
   String AC_transit_url = "https://api.actransit.org/transit/stops/" + station +"/predictions/?token=" + AC_TRANSIT_API_KEY;
   String AC_transit_response = callAPI(AC_transit_url);
   if (AC_transit_response != "API Request Error") {
@@ -91,13 +94,13 @@ transitData updateBusData(String station) {
       if (route == "51B" || route == "79") {
         String minutes = departureToMinutes(departure);
         Serial.println("Minutes: " + minutes);
-        transitData data = {route, minutes, delay};
+        TransitData data = {route, minutes, delay};
         return data;
       }
     }
   }
 
-  transitData emptyData = {"", "", ""};
+  TransitData emptyData = {"", "", ""};
   return emptyData;
 }
 
@@ -129,16 +132,4 @@ String departureToMinutes(String departure) {
   int diffMinutes = floor(diffSeconds / 60);
 
   return String(diffMinutes);
-}
-
-void setupTime() {
-  // Set time using NTP (Pacific Time Zone with DST)
-  configTime(-7 * 3600, 0, "pool.ntp.org", "time.nist.gov");
-
-  // Wait for time to sync
-  struct tm timeInfo;
-  while (!getLocalTime(&timeInfo)) {
-      Serial.println("Waiting for time...");
-      delay(1000);
-  }
 }
