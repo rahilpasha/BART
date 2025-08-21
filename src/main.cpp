@@ -35,7 +35,12 @@ void loop() {
 }
 
 void connectWiFi(void) {
-  WiFi.begin(ssid, WPA2_AUTH_PEAP, username, username, password);
+  #if WIFI_TYPE == WIFI_EDUROAM
+    WiFi.begin(ssid, WPA2_AUTH_PEAP, username, username, password);
+  #else
+    WiFi.begin(ssid, password);
+  #endif
+
   Serial.println("Connecting");
   while(WiFi.status() != WL_CONNECTED) {
     delay(500);
