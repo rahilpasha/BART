@@ -4,6 +4,6 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 
-String callAPI(String api_url);
+String callTransitAPI(String api_url);
 
 #endif

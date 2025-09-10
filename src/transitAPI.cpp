@@ -1,6 +1,6 @@
 #include "transitAPI.h"
 
-String callAPI(String api_url) {
+String callTransitAPI(String api_url) {
 	HTTPClient http;
 	
 	http.begin(api_url.c_str());

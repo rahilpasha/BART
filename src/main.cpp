@@ -3,9 +3,11 @@
 #include <HTTPClient.h>
 #include <Arduino_JSON.h>
 #include <ctime>
+
 #include "TransitData.h"
 #include "credentials.h"
 #include "transitAPI.h"
+#include "todoistAPI.h"
 #include "display.h"
 
 void connectWiFi(void);
@@ -30,6 +32,8 @@ void loop() {
   
   displayBARTData(bartData);
   displayBusData(busData);
+
+  Serial.println(callTodoistAPI("/tasks?filter=today"));
 
   delay(10000);
 }
@@ -63,7 +67,7 @@ void setupTime() {
 
 TransitData updateBARTData(String station) {
   String BART_ulr = "https://api.bart.gov/api/etd.aspx?cmd=etd&orig=" + station + "&key=" + BART_API_KEY + "&json=y";
-  String BART_response = callAPI(BART_ulr);
+  String BART_response = callTransitAPI(BART_ulr);
   if (BART_response != "API Request Error") {
     JSONVar BART_json = JSON.parse(BART_response);
     JSONVar destinations = BART_json["root"]["station"][0]["etd"];
@@ -87,7 +91,7 @@ TransitData updateBARTData(String station) {
 
 TransitData updateBusData(String station) {
   String AC_transit_url = "https://api.actransit.org/transit/stops/" + station +"/predictions/?token=" + AC_TRANSIT_API_KEY;
-  String AC_transit_response = callAPI(AC_transit_url);
+  String AC_transit_response = callTransitAPI(AC_transit_url);
   if (AC_transit_response != "API Request Error") {
     JSONVar AC_Transit_json = JSON.parse(AC_transit_response);
     for (int i = 0; i < AC_Transit_json.length(); i++) {
@@ -138,3 +142,4 @@ String departureToMinutes(String departure) {
 
   return String(diffMinutes);
 }
+
