@@ -21,3 +21,13 @@ String callTodoistAPI(String endpoint) {
   http.end();
   return response;
 }
+
+std::vector<String> processJsonResponse(String jsonResponse) {
+
+  JSONVar todoist_json = JSON.parse(jsonResponse);
+  std::vector<String> tasks;
+  for (int i = 0; i < todoist_json.length(); i++) {
+    tasks.push_back(todoist_json[i]["content"]);
+  }
+  return tasks;
+}

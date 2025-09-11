@@ -3,6 +3,7 @@
 #include <HTTPClient.h>
 #include <Arduino_JSON.h>
 #include <ctime>
+#include <vector>
 
 #include "TransitData.h"
 #include "credentials.h"
@@ -33,7 +34,14 @@ void loop() {
   displayBARTData(bartData);
   displayBusData(busData);
 
-  Serial.println(callTodoistAPI("/tasks?filter=today"));
+  String todoistResponse = callTodoistAPI("/tasks?filter=today");
+  Serial.println("-----");
+
+  std::vector<String> tasks = processJsonResponse(todoistResponse);
+  for (String task : tasks) {
+    Serial.println(task);
+  }
+
 
   delay(10000);
 }
