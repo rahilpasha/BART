@@ -4,6 +4,7 @@
 #include <Arduino_JSON.h>
 #include <ctime>
 #include <vector>
+#include <set>
 
 #include "TransitData.h"
 #include "credentials.h"
@@ -11,10 +12,22 @@
 #include "todoistAPI.h"
 #include "display.h"
 
+#include <XPT2046_Bitbang.h>
+
+#define MOSI_PIN 32
+#define MISO_PIN 39
+#define CLK_PIN  25
+#define CS_PIN   33
+
+XPT2046_Bitbang touchscreen(MOSI_PIN, MISO_PIN, CLK_PIN, CS_PIN);
+int screenButtonEvents = 0;
+ScreenType screen = Transit;
+
 void connectWiFi(void);
 void setupTime(void);
+void switchScreen(ScreenType screen);
 TransitData updateBARTData(String station);
-TransitData updateBusData(String station);
+TransitData updateBusData(String station, std::set<String> routes);
 String departureToMinutes(String departure);
 
 void setup() {
@@ -22,28 +35,41 @@ void setup() {
   connectWiFi();
   setupTime();
 
-  displaySetup();
+  touchscreen.begin();
+
+  displayInit();
+  switchScreen(screen);
 }
 
 void loop() {
-  Serial.println(WiFi.status());
 
-  TransitData bartData = updateBARTData("dbrk");
-  TransitData busData = updateBusData("59555");
-  
-  displayBARTData(bartData);
-  displayBusData(busData);
+  TouchPoint touch = touchscreen.getTouch();
 
-  String todoistResponse = callTodoistAPI("/tasks?filter=today");
-  Serial.println("-----");
+  // Display touches that have a pressure value (Z)
+  if (touch.zRaw > 200) { // 200 filters out noise
+    Serial.print("Touch at X: ");
+    Serial.print(touch.x);
+    Serial.print(", Y: ");
+    Serial.println(touch.y);
+    Serial.print(", Z: ");
+    Serial.println(touch.zRaw);
 
-  std::vector<String> tasks = processJsonResponse(todoistResponse);
-  for (String task : tasks) {
-    Serial.println(task);
+    if (touch.x > BUTTON_X_MIN && touch.x < BUTTON_X_MAX && touch.y > BUTTON_Y_MIN && touch.y < BUTTON_Y_MAX) {
+      screenButtonEvents++;
+      if (screenButtonEvents == 5) {
+        screen = screen == Transit ? Todoist : Transit;
+        screenButtonEvents = 0;
+
+        switchScreen(screen);
+
+        delay(1000);
+      }
+    } else {
+      screenButtonEvents = 0;
+    }
+
   }
-
-
-  delay(10000);
+  delay(100);
 }
 
 void connectWiFi(void) {
@@ -69,8 +95,37 @@ void setupTime() {
   struct tm timeInfo;
   while (!getLocalTime(&timeInfo)) {
       Serial.println("Waiting for time...");
-      delay(1000);
+      delay(500);
   }
+}
+
+void switchScreen(ScreenType screen) {
+  displayHeader(screen);
+
+  if (screen == Transit) {
+
+    displayTransitSetup();
+
+    TransitData bartData = updateBARTData("dbrk");
+    TransitData busData = updateBusData("55452", {"18", "6", "F"});
+    
+    displayBARTData(bartData);
+    displayBusData(busData);
+
+  } else if (screen == Todoist) {
+
+    String todoistResponse = callTodoistAPI("/tasks?filter=today");
+    Serial.println("-----");
+
+    std::vector<String> tasks = processJsonResponse(todoistResponse);
+    for (String task : tasks) {
+      Serial.println(task);
+    }
+
+    displayTasks(tasks);
+
+  }
+
 }
 
 TransitData updateBARTData(String station) {
@@ -97,7 +152,7 @@ TransitData updateBARTData(String station) {
   return emptyData;
 }
 
-TransitData updateBusData(String station) {
+TransitData updateBusData(String station, std::set<String> routes) {
   String AC_transit_url = "https://api.actransit.org/transit/stops/" + station +"/predictions/?token=" + AC_TRANSIT_API_KEY;
   String AC_transit_response = callTransitAPI(AC_transit_url);
   if (AC_transit_response != "API Request Error") {
@@ -108,7 +163,7 @@ TransitData updateBusData(String station) {
       String delay = JSON.stringify(AC_Transit_json[i]["PredictedDelayInSeconds"]);
       Serial.println("Route: " + route + ", Departure Time: " + departure + ", Delay: " + delay);
 
-      if (route == "51B" || route == "79") {
+      if (routes.find(route) != routes.end()) {
         String minutes = departureToMinutes(departure);
         Serial.println("Minutes: " + minutes);
         TransitData data = {route, minutes, delay};
