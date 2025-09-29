@@ -13,7 +13,7 @@ void displayHeader(ScreenType screen) {
 
 	tft.setTextColor(TFT_BLACK);
 
-	tft.fillRoundRect(BUTTON_X_MIN, BUTTON_Y_MIN, BUTTON_X_MAX - BUTTON_X_MIN, BUTTON_Y_MAX - BUTTON_Y_MIN, 10, TFT_LIGHTGREY);
+	tft.fillRoundRect(SCREEN_BTN_X_MIN, SCREEN_BTN_Y_MIN, SCREEN_BTN_X_MAX - SCREEN_BTN_X_MIN, SCREEN_BTN_Y_MAX - SCREEN_BTN_Y_MIN, 10, TFT_LIGHTGREY);
 
 	if (screen == Transit) {
 		tft.setTextSize(2);
@@ -24,6 +24,27 @@ void displayHeader(ScreenType screen) {
 		tft.setCursor(115, 15);
 		tft.println("Todoist");
 	}
+
+	tft.fillRoundRect(REFRESH_BTN_X_MIN, REFRESH_BTN_Y_MIN, REFRESH_BTN_X_MAX - REFRESH_BTN_X_MIN, REFRESH_BTN_Y_MAX - REFRESH_BTN_Y_MIN, 10, TFT_LIGHTGREY);
+
+	drawRefreshSymbol(REFRESH_BTN_X_MIN + 2, REFRESH_BTN_Y_MIN + 2, TFT_BLACK);
+
+}
+
+void drawRefreshSymbol(int x, int y, uint16_t color) {
+  // Upper arc (now on the right side)
+  tft.drawCircleHelper(x + 10, y + 10, 7, 2, color);
+  tft.drawCircleHelper(x + 10, y + 10, 6, 2, color);
+  
+  // Lower arc (now on the left side)
+  tft.drawCircleHelper(x + 10, y + 10, 7, 8, color);
+  tft.drawCircleHelper(x + 10, y + 10, 6, 8, color);
+  
+  // Top arrow (pointing left)
+  tft.fillTriangle(x + 4, y + 4, x + 1, y + 7, x + 7, y + 7, color);
+  
+  // Bottom arrow (pointing right)
+  tft.fillTriangle(x + 16, y + 16, x + 19, y + 13, x + 13, y + 13, color);
 }
 
 void displayTransitSetup(void) {

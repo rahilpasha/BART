@@ -13,7 +13,9 @@ String callTodoistAPI(String endpoint) {
   
   if (httpResponseCode > 0) {
     response = http.getString();
+#if DEBUG
     Serial.println("HTTP Response code: " + String(httpResponseCode));
+#endif
   } else {
     Serial.println("Error on HTTP request: " + String(httpResponseCode));
   }

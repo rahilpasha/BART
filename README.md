@@ -1,1 +1,1 @@
-BART and ACTransit updates for my CYD (ESP-32 LCD Display).
+BART & ACTransit updates + Todoist for my CYD (ESP-32 LCD Display).
